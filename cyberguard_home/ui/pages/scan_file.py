@@ -2,7 +2,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QUrl, Qt
 from PySide6.QtGui import QDesktopServices
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame, QHBoxLayout, QLayout, QScrollArea, QVBoxLayout, QWidget
+)
 
 from ...file_scanner import ScanResult
 from ..context import AppContext
@@ -18,16 +20,51 @@ class ScanFilePage(QWidget):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        outer.addWidget(scroll)
+        scroll.setStyleSheet("""
+        QScrollBar:vertical {
+            background: #0e0e16;
+            width: 16px;
+            margin: 4px 2px 4px 2px;
+            border-radius: 8px;
+        }
+
+        QScrollBar::handle:vertical {
+            background: #45445e;
+            min-height: 40px;
+            border-radius: 7px;
+        }
+
+        QScrollBar::handle:vertical:hover {
+            background: #00d9d0;
+        }
+
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {
+            height: 0px;
+        }
+
+        QScrollBar::add-page:vertical,
+        QScrollBar::sub-page:vertical {
+            background: transparent;
+        }
+    """)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        outer.addWidget(scroll, 1)
+
         body = QWidget()
         scroll.setWidget(body)
 
         lay = QVBoxLayout(body)
-        lay.setContentsMargins(40, 36, 40, 28)
-        lay.setSpacing(18)
+        lay.setContentsMargins(40, 5, 40, 28)
+        lay.setSpacing(14)
+        lay.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         lay.addWidget(make_label("h1", "Проверка файла"))
         lay.addWidget(make_label("sub", "Перетащи файл — скажу, можно ли ему доверять", wrap=True))
 
@@ -42,7 +79,11 @@ class ScanFilePage(QWidget):
         for view in (self._zone, self._busy, self._card):
             self._stack.addWidget(view)
         lay.addWidget(self._stack, 1)
-        lay.addLayout(self._build_footer())
+
+        # Нижняя панель находится вне прокручиваемой области
+        footer = self._build_footer()
+        footer.setContentsMargins(40, 0, 40, 18)
+        outer.addLayout(footer)
 
         self._zone.file_chosen.connect(self.start_scan)
         self._zone.rejected.connect(self._show_banner)
