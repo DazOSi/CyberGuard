@@ -1,0 +1,17 @@
+{
+  "allowed_licenses": ["MIT", "DRL-1.1", "Apache-2.0", "BSD-3-Clause"],
+  "sources": [
+    {
+      "dir": "reversinglabs",
+      "license": "MIT",
+      "url": "https://github.com/reversinglabs/reversinglabs-yara-rules",
+      "attribution": "ReversingLabs"
+    },
+    {
+      "dir": "signature-base",
+      "license": "DRL-1.1",
+      "url": "https://github.com/Neo23x0/signature-base",
+      "attribution": "Florian Roth (Nextron Systems) и другие авторы правил"
+    }
+  ]
+}

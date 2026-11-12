@@ -1,0 +1,26 @@
+# Переменные окружения и секреты
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Тесты
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Локальные базы и логи
+*.db
+*.sqlite3
+*.log
+
+# Сборка приложения
+build/
+dist/
+
+# Локальные настройки редактора
+.vscode/
