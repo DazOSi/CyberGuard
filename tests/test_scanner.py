@@ -142,3 +142,28 @@ def test_missing_file_and_directory(config: ScanConfig, tmp_path: Path) -> None:
         s.scan(tmp_path / "нет-такого.txt")
     with pytest.raises(FileScanError):
         s.scan(tmp_path)
+
+
+def test_local_hash_list_detection(config: ScanConfig, tmp_path: Path) -> None:
+    # Создаём обычный тестовый файл
+    payload = b"CyberGuard local hash database test"
+    f = tmp_path / "test_file.txt"
+    f.write_bytes(payload)
+
+    # Вычисляем SHA-256 файла
+    sha256 = hashlib.sha256(payload).hexdigest()
+
+    # Создаём временную базу с этим хэшем
+    hash_list = tmp_path / "blocklist.txt"
+    hash_list.write_text(f"{sha256}\n", encoding="utf-8")
+
+    # Подключаем базу через конфигурацию
+    test_config = replace(config, hash_list_path=hash_list)
+
+    # Запускаем настоящий сканер с настоящим провайдером
+    result = FileScanner(test_config).scan(f)
+
+    assert result.verdict is Verdict.DANGEROUS
+    assert result.score == 100
+    assert any("известных вредоносных программ" in reason for reason in result.reasons)
+    assert any(item.startswith("hashlist:") for item in result.technical)

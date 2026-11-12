@@ -60,11 +60,17 @@ class ScanConfig:
             per_minute, per_day = 4, 500
 
         hash_list = os.getenv("CYBERGUARD_HASH_LIST", "").strip()
+        hash_list_path = (
+            Path(hash_list).expanduser()
+            if hash_list
+            else root / "hashes" / "blocklist.txt"
+        )
+
         return cls(
             rules_dir=Path(os.getenv("CYBERGUARD_RULES_DIR", root / "rules")),
             db_path=Path(os.getenv("CYBERGUARD_DB", home / ".cyberguard" / "cache.db")),
             downloads_dirs=(home / "Downloads", home / "Загрузки"),
-            hash_list_path=Path(hash_list) if hash_list else None,
+            hash_list_path=hash_list_path,
             use_clamav=_flag("CYBERGUARD_USE_CLAMAV", True),
             clamav_path=os.getenv("CLAMSCAN_PATH") or None,
             use_defender=_flag("CYBERGUARD_USE_DEFENDER", True),
