@@ -24,3 +24,10 @@ dist/
 
 # Локальные настройки редактора
 .vscode/
+
+.gitignore
+
+.requirements.txt
+.pyproject.toml
+
+.hashes/
