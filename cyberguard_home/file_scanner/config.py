@@ -58,6 +58,10 @@ class ScanConfig:
         load_dotenv()
         home = Path.home()
         root = Path(__file__).resolve().parents[2]
+        rules_dir = Path(os.getenv("CYBERGUARD_RULES_DIR", root / "rules"))
+        hash_list_path = Path(
+        os.getenv("CYBERGUARD_HASH_LIST", root / "hashes" / "blocklist.txt")
+        ).expanduser()
 
         vt_license = os.getenv("CYBERGUARD_VT_LICENSE", "none").strip().lower()
         if vt_license not in VT_LICENSES:
@@ -68,15 +72,17 @@ class ScanConfig:
             per_minute, per_day = 4, 500
 
         return cls(
-            rules_dir=Path(os.getenv("CYBERGUARD_RULES_DIR", root / "rules")),
+            rules_dir=rules_dir,
             db_path=Path(os.getenv("CYBERGUARD_DB", home / ".cyberguard" / "cache.db")),
             downloads_dirs=(home / "Downloads", home / "Загрузки"),
-            hash_list_path=_path_or_none("CYBERGUARD_HASH_LIST"),
+            hash_list_path=hash_list_path,
             use_clamav=_flag("CYBERGUARD_USE_CLAMAV", True),
             clamav_path=os.getenv("CLAMSCAN_PATH") or None,
             clamav_bundle_dir=_path_or_none("CYBERGUARD_CLAMAV_DIR"),
             clamav_db_dir=_path_or_none("CYBERGUARD_CLAMAV_DB"),
+            clamav_update_interval=6 * 3600,
             use_defender=_flag("CYBERGUARD_USE_DEFENDER", True),
+            engine_timeout=120.0,
             vt_api_key=os.getenv("VT_API_KEY") or None,
             vt_license=vt_license,
             online_lookup=_flag("CYBERGUARD_ONLINE_LOOKUP", True),

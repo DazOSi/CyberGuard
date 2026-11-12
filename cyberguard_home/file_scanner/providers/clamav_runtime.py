@@ -142,16 +142,17 @@ def update_database(
 
 
 def main() -> int:
-    """python -m cyberguard_home.file_scanner.providers.clamav_runtime — обновить базу вручную."""
+    """Обновить базу ClamAV вручную."""
     config = ScanConfig.from_env()
     runtime = find_runtime(config)
+
     if runtime is None:
         print("ClamAV не найден.")
         return 1
-    result = update_database(runtime, interval=config.clamav_update_interval)
+
+    result = update_database(
+        runtime,
+        interval=config.clamav_update_interval,
+    )
     print(result.message)
     return 0 if result.ok else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
