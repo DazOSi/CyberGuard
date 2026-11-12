@@ -5,6 +5,7 @@ from pathlib import Path
 
 from ..models import Finding, ProviderReport
 from ._proc import Runner, run_command
+from .clamav_runtime import database_ready
 
 log = logging.getLogger(__name__)
 _FOUND_RE = re.compile(r"^.*: (?P<name>[^:]+?) FOUND\s*$")
@@ -12,14 +13,22 @@ _FOUND_RE = re.compile(r"^.*: (?P<name>[^:]+?) FOUND\s*$")
 
 class ClamAvProvider:
     """
-    ClamAV запускается как отдельная программа, установленная в системе.
-    Мы не линкуем libclamav и не вшиваем ClamAV в приложение.
-    Файл остаётся на компьютере.
+    ClamAV запускается как отдельная программа (встроенная в поставку или системная).
+    Мы не линкуем libclamav. Файл остаётся на компьютере.
+    database_dir задаётся для встроенного ClamAV; None — база по умолчанию (системная).
     """
     name = "clamav"
 
-    def __init__(self, executable: str, *, timeout: float = 120.0, runner: Runner = run_command) -> None:
+    def __init__(
+        self,
+        executable: str,
+        *,
+        database_dir: Path | None = None,
+        timeout: float = 120.0,
+        runner: Runner = run_command,
+    ) -> None:
         self._exe = executable
+        self._db = database_dir
         self._timeout = timeout
         self._runner = runner
 
@@ -27,10 +36,24 @@ class ClamAvProvider:
         return ProviderReport(self.name, False, note=note)
 
     def check(self, path: Path, sha256: str) -> ProviderReport:
+        if self._db is not None and not database_ready(self._db):
+            return self._unavailable(
+                "База сигнатур ClamAV ещё не загружена. Подождите окончания обновления и повторите проверку.")
+
+        resolved = path.resolve()
+        # Не-ASCII путь передаём через стандартный ввод (clamscan -): так не зависим от кодировки.
+        use_stdin = not str(resolved).isascii()
+
+        cmd = [self._exe, "--no-summary", "--stdout"]
+        if self._db is not None:
+            cmd.append(f"--database={self._db}")
         # Абсолютный путь не может начинаться с «-», поэтому не примется за параметр.
-        cmd = [self._exe, "--no-summary", "--stdout", str(path.resolve())]
+        cmd.append("-" if use_stdin else str(resolved))
         try:
-            proc = self._runner(cmd, self._timeout)
+            if use_stdin:
+                proc = self._runner(cmd, self._timeout, stdin_path=path)
+            else:
+                proc = self._runner(cmd, self._timeout)
         except subprocess.TimeoutExpired:
             return self._unavailable("Проверка движком ClamAV не уложилась по времени. Попробуйте ещё раз.")
         except OSError:

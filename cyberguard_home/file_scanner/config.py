@@ -22,6 +22,11 @@ def _int_or_none(name: str) -> int | None:
     return value if value > 0 else None
 
 
+def _path_or_none(name: str) -> Path | None:
+    raw = os.getenv(name, "").strip()
+    return Path(raw) if raw else None
+
+
 @dataclass(frozen=True, slots=True)
 class ScanConfig:
     rules_dir: Path
@@ -30,7 +35,10 @@ class ScanConfig:
     # Локальные источники
     hash_list_path: Path | None = None
     use_clamav: bool = True              # работает, только если clamscan найден
-    clamav_path: str | None = None
+    clamav_path: str | None = None       # явный путь к clamscan
+    clamav_bundle_dir: Path | None = None  # папка со встроенным ClamAV (по умолчанию vendor/clamav)
+    clamav_db_dir: Path | None = None    # где хранить базу сигнатур встроенного ClamAV
+    clamav_update_interval: float = 6 * 3600
     use_defender: bool = True            # только Windows
     engine_timeout: float = 120.0
     # VirusTotal: по умолчанию выключен. Нужна подтверждённая лицензия.
@@ -59,20 +67,15 @@ class ScanConfig:
         else:                            # квоты бесплатного ключа
             per_minute, per_day = 4, 500
 
-        hash_list = os.getenv("CYBERGUARD_HASH_LIST", "").strip()
-        hash_list_path = (
-            Path(hash_list).expanduser()
-            if hash_list
-            else root / "hashes" / "blocklist.txt"
-        )
-
         return cls(
             rules_dir=Path(os.getenv("CYBERGUARD_RULES_DIR", root / "rules")),
             db_path=Path(os.getenv("CYBERGUARD_DB", home / ".cyberguard" / "cache.db")),
             downloads_dirs=(home / "Downloads", home / "Загрузки"),
-            hash_list_path=hash_list_path,
+            hash_list_path=_path_or_none("CYBERGUARD_HASH_LIST"),
             use_clamav=_flag("CYBERGUARD_USE_CLAMAV", True),
             clamav_path=os.getenv("CLAMSCAN_PATH") or None,
+            clamav_bundle_dir=_path_or_none("CYBERGUARD_CLAMAV_DIR"),
+            clamav_db_dir=_path_or_none("CYBERGUARD_CLAMAV_DB"),
             use_defender=_flag("CYBERGUARD_USE_DEFENDER", True),
             vt_api_key=os.getenv("VT_API_KEY") or None,
             vt_license=vt_license,

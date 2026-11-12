@@ -1,11 +1,11 @@
 import logging
-import shutil
 
 from ..config import ScanConfig
 from ..storage import Storage
 from ..vt_client import VirusTotalClient
 from .base import Provider
 from .clamav import ClamAvProvider
+from .clamav_runtime import find_runtime
 from .defender import WindowsDefenderProvider, find_mpcmdrun
 from .local_hashes import LocalHashListProvider
 from .virustotal import VirusTotalProvider
@@ -26,8 +26,9 @@ def build_providers(config: ScanConfig) -> list[Provider]:
     if config.use_defender and (exe := find_mpcmdrun()):
         providers.append(WindowsDefenderProvider(exe, timeout=config.engine_timeout))
 
-    if config.use_clamav and (exe := config.clamav_path or shutil.which("clamscan")):
-        providers.append(ClamAvProvider(exe, timeout=config.engine_timeout))
+    if config.use_clamav and (runtime := find_runtime(config)):
+        providers.append(ClamAvProvider(
+            runtime.clamscan, database_dir=runtime.db_dir, timeout=config.engine_timeout))
 
     # VirusTotal: только при явно подтверждённой лицензии. Бесплатный ключ в коммерции запрещён.
     if config.online_lookup and config.vt_api_key:

@@ -21,14 +21,14 @@ def proc(code: int, out: str = "", err: str = "") -> "subprocess.CompletedProces
 
 class FakeRunner:
     def __init__(self, result) -> None:
-        self.result, self.calls = result, []
+        self.result, self.calls, self.stdin_paths = result, [], []
 
-    def __call__(self, cmd, timeout):
+    def __call__(self, cmd, timeout, stdin_path=None):
         self.calls.append((list(cmd), timeout))
+        self.stdin_paths.append(stdin_path)
         if isinstance(self.result, BaseException):
             raise self.result
         return self.result
-
 
 # ---------- локальная база хэшей ----------
 def test_local_hash_list(tmp_path: Path) -> None:
@@ -44,18 +44,23 @@ def test_local_hash_list(tmp_path: Path) -> None:
 
 
 # ---------- ClamAV ----------
-def test_clamav_detected(tmp_path: Path) -> None:
-    runner = FakeRunner(proc(1, f"{tmp_path}/e.txt: Eicar-Signature FOUND\n"))
-    report = ClamAvProvider("clamscan", runner=runner).check(tmp_path / "e.txt", SHA_ABC)
+def test_clamav_detected() -> None:
+    sample = Path("/cg/sample.txt")          # не зависит от кириллицы в папке временных файлов
+    runner = FakeRunner(proc(1, "/cg/sample.txt: Eicar-Signature FOUND\n"))
+    report = ClamAvProvider("clamscan", runner=runner).check(sample, SHA_ABC)
     assert report.available and report.findings[0].points == 100
     assert "Eicar-Signature" in report.findings[0].technical
     cmd = runner.calls[0][0]
     assert cmd[0] == "clamscan" and Path(cmd[-1]).is_absolute()
+    assert runner.stdin_paths[0] is None
 
 
-def test_clamav_clean(tmp_path: Path) -> None:
-    report = ClamAvProvider("clamscan", runner=FakeRunner(proc(0))).check(tmp_path / "a", SHA_ABC)
-    assert report.available and report.findings[0].points == 0
+def test_clamav_uses_stdin_for_non_ascii_paths(tmp_path: Path) -> None:
+    sample = tmp_path / "счёт.txt"
+    sample.write_bytes(b"x")
+    runner = FakeRunner(proc(0))
+    ClamAvProvider("clamscan", runner=runner).check(sample, SHA_ABC)
+    assert runner.calls[0][0][-1] == "-" and runner.stdin_paths[0] == sample
 
 
 @pytest.mark.parametrize("result", [proc(2, err="no database"), subprocess.TimeoutExpired("c", 1), FileNotFoundError()])

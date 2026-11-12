@@ -62,6 +62,14 @@ class FileScanner:
             if callable(closer):
                 closer()
 
+    @property
+    def provider_names(self) -> tuple[str, ...]:
+        return tuple(p.name for p in self._providers)
+
+    @property
+    def rules_available(self) -> bool:
+        return self._yara.available
+
     @staticmethod
     def _run_provider(provider: Provider, path: Path, sha256: str) -> ProviderReport:
         try:
